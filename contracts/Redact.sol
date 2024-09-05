@@ -2,17 +2,21 @@
 pragma solidity ^0.8.10;
 
 contract Redact {
+    // Struct to store both originalLink and certificateLink
+    struct LinkInfo {
+        string originalLink;
+        string certificateLink;
+    }
 
-    mapping(string => string) private maskedToOriginal;
-    mapping(uint => string[]) private userIdToLinks;
-    uint[] private userIds;
-    uint private userIdCounter;
+    mapping(string => LinkInfo) private maskedToLinkInfo;
+    mapping(string => string[]) private usernameToLinks;
+    string[] private usernames;
 
     // Salt for hashing, initialized through the constructor
     string private salt;
 
     // Event to log when a link is masked
-    event LinkMasked(uint indexed userId, string maskedLink);
+    event LinkMasked(string indexed username, string maskedLink, string originalLink, string certificateLink, uint timestamp);
 
     // Constructor to initialize the salt
     constructor(string memory initialSalt) {
@@ -34,57 +38,103 @@ contract Redact {
     }
 
     // Function to mask an IPFS link
-    function mask(uint userId, string memory originalLink, string memory maskedLink) public returns (string memory) {
-        // Ensure the user ID exists
-        require(userIdExists(userId), "User ID does not exist");
+    function mask(string memory username, string memory originalLink, string memory maskedLink, string memory certificateLink) public returns (string memory) {
+        // Ensure the username exists
+        require(usernameExists(username), "Username does not exist");
 
-        // Store the masked and original links in the mapping
-        maskedToOriginal[maskedLink] = originalLink;
+        // Store the masked link, original link, and certificate link in the mapping
+        maskedToLinkInfo[maskedLink] = LinkInfo(originalLink, certificateLink);
 
         // Store the masked link in the user's list of links
-        userIdToLinks[userId].push(maskedLink);
+        usernameToLinks[username].push(maskedLink);
 
-        // Emit the event
-        emit LinkMasked(userId, maskedLink);
+        // Emit the event with the current timestamp
+        emit LinkMasked(username, maskedLink, originalLink, certificateLink, block.timestamp);
 
         return maskedLink;
     }
 
-    // Function to demask a link
-    function demask(string memory maskedLink) public view returns (string memory) {
+    // Function to demask a link and get both original and certificate links
+    function demask(string memory maskedLink) public view returns (string memory, string memory) {
         // Validate the link
         require(validate(maskedLink), "Invalid masked link");
 
-        // Return the original link
-        return maskedToOriginal[maskedLink];
+        // Return the original and certificate links
+        LinkInfo memory linkInfo = maskedToLinkInfo[maskedLink];
+        return (linkInfo.originalLink, linkInfo.certificateLink);
     }
 
     // Function to validate if a masked link exists
     function validate(string memory maskedLink) public view returns (bool) {
         // Check if the masked link exists in the mapping
-        return bytes(maskedToOriginal[maskedLink]).length > 0;
+        return bytes(maskedToLinkInfo[maskedLink].originalLink).length > 0;
     }
 
-    // Utility function to check if a user ID exists
-    function userIdExists(uint userId) internal view returns (bool) {
-        for (uint i = 0; i < userIds.length; i++) {
-            if (userIds[i] == userId) {
+    // Utility function to check if a username exists
+    function usernameExists(string memory username) internal view returns (bool) {
+        for (uint i = 0; i < usernames.length; i++) {
+            if (keccak256(abi.encodePacked(usernames[i])) == keccak256(abi.encodePacked(username))) {
                 return true;
             }
         }
         return false;
     }
 
-    // Function to add a new user and get a user ID
-    function addUser() public returns (uint) {
-        userIdCounter++;
-        userIds.push(userIdCounter);
-        return userIdCounter;
+    // Function to add a new user and get a username
+    function addUser(string memory username) public returns (string memory) {
+        require(!usernameExists(username), "Username already exists");
+        usernames.push(username);
+        return username;
     }
 
     // Function to get the list of masked links for a user
-    function getUserLinks(uint userId) public view returns (string[] memory) {
-        return userIdToLinks[userId];
+    function getUserLinks(string memory username) public view returns (string[] memory) {
+        return usernameToLinks[username];
+    }
+
+    // Setter functions
+
+    // Setter for salt
+    function setSalt(string memory newSalt) public {
+        salt = newSalt;
+    }
+
+    // Setter for maskedToLinkInfo mapping (for a specific maskedLink)
+    function setMaskedToLinkInfo(string memory maskedLink, string memory originalLink, string memory certificateLink) public {
+        maskedToLinkInfo[maskedLink] = LinkInfo(originalLink, certificateLink);
+    }
+
+    // Setter for usernameToLinks mapping (for a specific username)
+    function setUserLinks(string memory username, string[] memory links) public {
+        usernameToLinks[username] = links;
+    }
+
+    // Setter for usernames array
+    function setUsernames(string[] memory newUsernames) public {
+        usernames = newUsernames;
+    }
+
+    // Getter functions
+
+    // Getter for salt
+    function getSalt() public view returns (string memory) {
+        return salt;
+    }
+
+    // Getter for maskedToLinkInfo mapping (for a specific maskedLink)
+    function getLinkInfo(string memory maskedLink) public view returns (string memory, string memory) {
+        LinkInfo memory linkInfo = maskedToLinkInfo[maskedLink];
+        return (linkInfo.originalLink, linkInfo.certificateLink);
+    }
+
+    // Getter for usernameToLinks mapping (for a specific username)
+    function getUserLinksByUsername(string memory username) public view returns (string[] memory) {
+        return usernameToLinks[username];
+    }
+
+    // Getter for usernames array
+    function getUsernames() public view returns (string[] memory) {
+        return usernames;
     }
 
     // Utility function to convert bytes32 to a hex string
