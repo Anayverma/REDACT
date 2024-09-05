@@ -31,7 +31,10 @@ const Navbar = () => {
         <Link href="/mask" className="mx-9">
           Mask
         </Link>
-        <span className="mx-9">Demask</span>
+        {/* <span className="mx-9">Demask</span> */}
+        <Link href="/demask" className="mx-9">
+          Demask
+        </Link>
         <Link href="/validate" className="mx-9">
           Validate
         </Link>
