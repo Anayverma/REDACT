@@ -6,16 +6,27 @@ import "react-toastify/dist/ReactToastify.css";
 const ValidateMaskedElement = () => {
   const [elementType, setElementType] = useState("");
   const [element, setElement] = useState(null);
+  const [certificateType, setCertificateType] = useState("");
+  const [certificate, setCertificate] = useState(null);
   const [preview, setPreview] = useState("");
+  const [certificatePreview, setCertificatePreview] = useState("");
   const [fileUrl, setFileUrl] = useState("");
+  const [cerfileUrl, setCerFileUrl] = useState("");
   const [validationResult, setValidationResult] = useState("");
-
+  const [loading,setLoading] = useState(false);
   const handleElementTypeChange = (e) => {
     setElementType(e.target.value);
     setElement(null);
     setPreview("");
     setFileUrl("");
     setValidationResult("");
+  };
+
+  const handleCertificateTypeChange = (e) => {
+    setCertificateType(e.target.value);
+    setCertificate(null);
+    setCertificatePreview("");
+    setCerFileUrl("");
   };
 
   const handleElementChange = (e) => {
@@ -41,48 +52,82 @@ const ValidateMaskedElement = () => {
     }
   };
 
-  const uploadToIPFS = async () => {
-    if (!element) {
-      toast.error("Please select an element first.");
-      return;
-    }
+  const handleCertificateChange = (e) => {
+    const selectedCertificate = e.target.files[0];
+    if (selectedCertificate) {
+      setCertificate(selectedCertificate);
 
-    const formData = new FormData();
-    formData.append("file", element);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setCertificatePreview(reader.result);
+      };
 
-    try {
-      const response = await fetch(
-        "https://api.pinata.cloud/pinning/pinFileToIPFS",
-        {
-          method: "POST",
-          body: formData,
-          headers: {
-            pinata_api_key: process.env.NEXT_PUBLIC_API_Key,
-            pinata_secret_api_key: process.env.NEXT_PUBLIC_API_Secret,
-          },
-        }
-      );
-
-      if (!response.ok) {
-        throw new Error("Error uploading element to IPFS.");
+      if (
+        certificateType.startsWith("image") ||
+        certificateType === "application/pdf" ||
+        certificateType === "video/mp4" ||
+        certificateType === "audio/mp3"
+      ) {
+        reader.readAsDataURL(selectedCertificate);
+      } else {
+        setCertificatePreview("");
       }
-
-      const data = await response.json();
-      const ipfsLink = `https://gateway.pinata.cloud/ipfs/${data.IpfsHash}`;
-      setFileUrl(ipfsLink);
-      console.log("Element uploaded to IPFS successfully.");
-      toast.success("Element uploaded to IPFS successfully!");
-
-      // After successful IPFS upload, send the IPFS link to the backend for validation
-      validateMaskedElement(ipfsLink);
-    } catch (error) {
-      console.error("Error uploading element to IPFS:", error);
-      toast.error("Error uploading element to IPFS.");
     }
   };
 
-  const validateMaskedElement = async (ipfsLink) => {
+  const uploadToIPFS = async () => {
+    if (!element || !certificate) {
+      toast.error("Please select both element and certificate.");
+      return;
+    }
+
     try {
+      // Upload element separately
+      const elementIpfsLink = await uploadFileToIPFS(element);
+      setFileUrl(elementIpfsLink);
+      validateMaskedElement(elementIpfsLink, "element");
+
+      // Upload certificate separately
+      const certificateIpfsLink = await uploadFileToIPFS(certificate);
+      setCerFileUrl(certificateIpfsLink);
+      validateMaskedElement(certificateIpfsLink, "certificate");
+
+    } catch (error) {
+      console.error("Error uploading files to IPFS:", error);
+      toast.error("Error uploading files to IPFS.");
+    }
+  };
+
+  const uploadFileToIPFS = async (file) => {
+    const formData = new FormData();
+    formData.append("file", file);
+    setLoading(true)
+    const response = await fetch(
+      "https://api.pinata.cloud/pinning/pinFileToIPFS",
+      {
+        method: "POST",
+        body: formData,
+        headers: {
+          pinata_api_key: process.env.NEXT_PUBLIC_API_Key,
+          pinata_secret_api_key: process.env.NEXT_PUBLIC_API_Secret,
+        },
+      }
+    );
+    setLoading(false)
+
+    if (!response.ok) {
+      throw new Error("Error uploading file to IPFS.");
+    }
+
+    const data = await response.json();
+    const ipfsLink = `https://gateway.pinata.cloud/ipfs/${data.IpfsHash}`;
+    return ipfsLink;
+  };
+
+  const validateMaskedElement = async (ipfsLink, type) => {
+    try {
+    setLoading(true)
+
       const response = await fetch("/api/validategetlink", {
         method: "POST",
         headers: {
@@ -90,18 +135,21 @@ const ValidateMaskedElement = () => {
         },
         body: JSON.stringify({ link: ipfsLink }),
       });
+      setLoading(false)
 
       if (!response.ok) {
-        throw new Error("Error validating element.");
+        throw new Error(`Error validating ${type}.`);
       }
 
       const { link, username } = await response.json();
-      setValidationResult(`Validation successful! Link: ${link}, Username: ${username}`);
-      toast.success("Element validated successfully!");
+      setValidationResult(
+        `Validation successful for ${type}! Link: ${link}, Username: ${username}`
+      );
+      toast.success(`${type} validated successfully!`);
     } catch (error) {
-      console.error("Error validating element:", error);
-      setValidationResult("Error validating element.");
-      toast.error("Error validating element.");
+      console.error(`Error validating ${type}:`, error);
+      setValidationResult(`Error validating ${type}.`);
+      toast.error(`Error validating ${type}.`);
     }
   };
 
@@ -111,6 +159,7 @@ const ValidateMaskedElement = () => {
         Validate Masked Element
       </h2>
 
+      {/* Element Selection */}
       <div className="w-full mb-6">
         <label
           htmlFor="element-type"
@@ -125,6 +174,28 @@ const ValidateMaskedElement = () => {
           className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-700 focus:ring-blue-500 focus:border-blue-500"
         >
           <option value="">Select element type</option>
+          <option value="image/*">Image (JPEG, PNG, etc.)</option>
+          <option value="application/pdf">PDF</option>
+          <option value="application/msword">DOC</option>
+          <option value="video/mp4">MP4 Video</option>
+          <option value="audio/mp3">MP3 Audio</option>
+        </select>
+      </div>
+
+      <div className="w-full mb-6">
+        <label
+          htmlFor="certificate-type"
+          className="block text-lg font-medium text-gray-700 mb-2"
+        >
+          Select Certificate Type
+        </label>
+        <select
+          id="certificate-type"
+          value={certificateType}
+          onChange={handleCertificateTypeChange}
+          className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-700 focus:ring-blue-500 focus:border-blue-500"
+        >
+          <option value="">Select certificate type</option>
           <option value="image/*">Image (JPEG, PNG, etc.)</option>
           <option value="application/pdf">PDF</option>
           <option value="application/msword">DOC</option>
@@ -181,19 +252,64 @@ const ValidateMaskedElement = () => {
         </>
       )}
 
+      {certificateType && (
+        <>
+          <div className="w-full mb-6">
+            <input
+              type="file"
+              accept={certificateType}
+              onChange={handleCertificateChange}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-700"
+            />
+          </div>
+          {certificatePreview && (
+            <div className="flex flex-col items-center mb-6">
+              <h3 className="text-xl font-medium mb-2 text-gray-800">
+                Certificate Preview:
+              </h3>
+              {certificateType.startsWith("image") && (
+                <img
+                  src={certificatePreview}
+                  alt="Preview"
+                  className="max-w-full max-h-80 rounded-lg border border-gray-300"
+                />
+              )}
+              {certificateType === "application/pdf" && (
+                <iframe
+                  src={certificatePreview}
+                  title="PDF Preview"
+                  className="w-full h-80 border border-gray-300"
+                />
+              )}
+              {certificateType === "video/mp4" && (
+                <video
+                  src={certificatePreview}
+                  controls
+                  className="w-full h-80 border border-gray-300 rounded-lg"
+                />
+              )}
+              {certificateType === "audio/mp3" && (
+                <audio
+                  src={certificatePreview}
+                  controls
+                  className="w-full border border-gray-300 rounded-lg"
+                />
+              )}
+            </div>
+          )}
+        </>
+      )}
+
       <button
         onClick={uploadToIPFS}
-        className="w-[50%] mb-6 px-6 py-2 text-white font-semibold rounded-lg bg-blue-500 hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
+        className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
       >
-        Upload and Validate
+        Upload & Validate
       </button>
 
       {validationResult && (
-        <div className="mt-6 w-full">
-          <h3 className="text-lg font-medium text-gray-800">Validation Result:</h3>
-          <div className="w-full text-ellipsis text-nowrap overflow-hidden">
-            <p className="text-blue-500">{validationResult}</p>
-          </div>
+        <div className="mt-6 p-4 bg-green-100 border border-green-400 text-green-700 rounded-lg">
+          {validationResult}
         </div>
       )}
     </div>
