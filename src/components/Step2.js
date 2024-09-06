@@ -4,6 +4,7 @@ import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import Navbar from "./Navbar";
 
+
 const ValidateMaskedElement = () => {
   const [elementType, setElementType] = useState("");
   const [element, setElement] = useState(null);
@@ -15,7 +16,8 @@ const ValidateMaskedElement = () => {
   const [cerfileUrl, setCerFileUrl] = useState("");
   const [validationResult, setValidationResult] = useState("");
   const [loading, setLoading] = useState(false);
-  const [username,setUsername]=useState(localStorage.getItem("username")||"REDACT")
+  const [username, setUsername] = useState(localStorage.getItem("username") || "REDACT");
+
   const handleElementTypeChange = (e) => {
     setElementType(e.target.value);
     setElement(null);
@@ -84,6 +86,8 @@ const ValidateMaskedElement = () => {
     }
 
     try {
+      setLoading(true); // Start loading
+
       // Upload element separately
       const elementIpfsLink = await uploadFileToIPFS(element);
       setFileUrl(elementIpfsLink);
@@ -96,13 +100,14 @@ const ValidateMaskedElement = () => {
     } catch (error) {
       console.error("Error uploading files to IPFS:", error);
       toast.error("Error uploading files to IPFS.");
+    } finally {
+      setLoading(false); // Stop loading
     }
   };
 
   const uploadFileToIPFS = async (file) => {
     const formData = new FormData();
     formData.append("file", file);
-    setLoading(true);
     const response = await fetch(
       "https://api.pinata.cloud/pinning/pinFileToIPFS",
       {
@@ -114,7 +119,6 @@ const ValidateMaskedElement = () => {
         },
       }
     );
-    setLoading(false);
 
     if (!response.ok) {
       throw new Error("Error uploading file to IPFS.");
@@ -127,7 +131,8 @@ const ValidateMaskedElement = () => {
 
   const validateMaskedElement = async (ipfsLink, type) => {
     try {
-      setLoading(true);
+      setLoading(true); // Start loading
+
       const metricsResponse = await fetch("/api/updateMetrics", {
         method: "POST",
         headers: {
@@ -135,7 +140,7 @@ const ValidateMaskedElement = () => {
         },
         body: JSON.stringify({
           incrementValidation: 1,
-          username: localStorage.getItem("username")||"pehliU"
+          username: localStorage.getItem("username") || "pehliU",
         }),
       });
 
@@ -144,6 +149,7 @@ const ValidateMaskedElement = () => {
       }
 
       toast.success("Mask metrics updated successfully!");
+
       const response = await fetch("/api/validategetlink", {
         method: "POST",
         headers: {
@@ -151,34 +157,31 @@ const ValidateMaskedElement = () => {
         },
         body: JSON.stringify({ link: ipfsLink }),
       });
-      setLoading(false);
 
       if (!response.ok) {
         throw new Error(`Error validating ${type}.`);
       }
-      // console.log(response.json())
-      // const { link, username } = await response.json();
+      setUsername(username.replace(/^"(.*)"$/, '$1').trim());
+
       setValidationResult(
-        `Validation successful for pdf! Username: ${username}`
+        `Validation successful for ${type}! Username: ${username}`
       );
       toast.success(`${type} validated successfully!`);
     } catch (error) {
       console.error(`Error validating ${type}:`, error);
-      // setValidationResult(`Error validating ${type}.`);
-      // toast.error(`Error validating ${type}.`);
+      toast.error(`Error validating ${type}.`);
+    } finally {
+      setLoading(false); // Stop loading
     }
   };
 
   return (
     <div>
-      {" "}
       <Navbar />
       <div className="flex flex-col items-center p-6 sm:p-8 md:p-10 lg:p-12 max-w-lg mx-auto border border-gray-300 rounded-lg bg-white shadow-md">
-        {" "}
         <h2 className="text-2xl font-semibold mb-6 text-gray-900">
           Validate Masked Element
         </h2>
-        {/* Element Selection */}
         <div className="w-full mb-6">
           <label
             htmlFor="element-type"
@@ -293,7 +296,7 @@ const ValidateMaskedElement = () => {
                 {certificateType === "application/pdf" && (
                   <iframe
                     src={certificatePreview}
-                    title="PDF Preview"
+                    title="Certificate PDF Preview"
                     className="w-full h-80 border border-gray-300"
                   />
                 )}
@@ -315,15 +318,23 @@ const ValidateMaskedElement = () => {
             )}
           </>
         )}
+
         <button
           onClick={uploadToIPFS}
-          className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+          disabled={loading}
+          className={`w-full px-4 py-2 font-semibold text-lg text-white rounded-lg shadow-md ${
+            loading ? "bg-gray-400 cursor-not-allowed" : "bg-blue-500 hover:bg-blue-700"
+          }`}
         >
-          Upload & Validate
+          {loading ? "Uploading..." : "Validate Masked Element"}
         </button>
+
         {validationResult && (
-          <div className="mt-6 p-4 bg-green-100 border border-green-400 text-green-700 rounded-lg">
-            {validationResult}
+          <div className="w-full mt-6">
+            <h3 className="text-lg font-medium text-gray-800 mb-2">
+              Validation Result:
+            </h3>
+            <p className="text-sm text-gray-600">{validationResult}</p>
           </div>
         )}
       </div>
