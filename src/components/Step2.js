@@ -143,7 +143,6 @@ const ValidateMaskedElement = () => {
           username: localStorage.getItem("username") || "pehliU",
         }),
       });
-
       if (!metricsResponse.ok) {
         throw new Error("Error updating mask metrics.");
       }
@@ -164,7 +163,7 @@ const ValidateMaskedElement = () => {
       setUsername(username.replace(/^"(.*)"$/, '$1').trim());
 
       setValidationResult(
-        `Validation successful for ${type}! Username: ${username}`
+        `Validation successful for ${type||"pdf"}! Username: ${username}`
       );
       toast.success(`${type} validated successfully!`);
     } catch (error) {
