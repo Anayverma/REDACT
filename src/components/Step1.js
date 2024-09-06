@@ -389,7 +389,7 @@ const FileUploadAndProcess = () => {
       toast.success("User added successfully!");
     } catch (error) {
       console.error("Error adding user:", error);
-      toast.error("Failed to add user.");
+      // toast.error("Failed to add user.");
     }
   };
 
@@ -592,13 +592,83 @@ const FileUploadAndProcess = () => {
         masked_pdf_ipfs_link,
         certificate_ipfs_link
       );
+      const metricsResponse = await fetch("/api/updateMetrics", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          incrementMask: 1,
+          username: username.trim(),
+        }),
+      });
+
+      if (!metricsResponse.ok) {
+        throw new Error("Error updating mask metrics.");
+      }
+
+      toast.success("Mask metrics updated successfully!");
       setLoading(false);
     } catch (error) {
       console.error("Error processing file:", error);
       toast.error("Error processing file.");
     }
   };
+  // const handleNext = async () => {
+  //   if (selectedFields.length === 0) {
+  //     toast.error("Please select at least one field.");
+  //     return;
+  //   }
 
+  //   const trimmedUsername = username.trim();
+
+  //   console.log('Username before API call:', trimmedUsername);
+
+  //   try {
+  //     // Call the mask processing API
+  //     const maskResponse = await fetch("/api/testMask", {
+  //       method: "POST",
+  //       headers: {
+  //         "Content-Type": "application/json",
+  //       },
+  //       body: JSON.stringify({
+  //         fileLink: fileUrl,
+  //         fileType,
+  //         selectedFields,
+  //         maskingLevel,
+  //       }),
+  //     });
+
+  //     if (!maskResponse.ok) {
+  //       throw new Error("Error processing file.");
+  //     }
+
+  //     const { processedLink } = await maskResponse.json();
+  //     setProcessedLink(processedLink);
+  //     toast.success("File processed successfully!");
+
+  //     // Call the updateMetrics API to increase masks attribute by one
+  //     const metricsResponse = await fetch("/api/updateMetrics", {
+  //       method: "POST",
+  //       headers: {
+  //         "Content-Type": "application/json",
+  //       },
+  //       body: JSON.stringify({
+  //         incrementMask: 1,
+  //         username: trimmedUsername
+  //       }),
+  //     });
+
+  //     if (!metricsResponse.ok) {
+  //       throw new Error("Error updating mask metrics.");
+  //     }
+
+  //     toast.success("Mask metrics updated successfully!");
+  //   } catch (error) {
+  //     console.error("Error processing file or updating metrics:", error);
+  //     toast.error("Error processing file or updating mask metrics.");
+  //   }
+  // };
   return (
     <div className="flex flex-col items-center p-6 sm:p-8 md:p-10 lg:p-12 max-w-lg mx-auto border border-gray-300 rounded-lg bg-white shadow-md">
       {loading && (
@@ -617,7 +687,7 @@ const FileUploadAndProcess = () => {
         ) : (
           <button
             onClick={connectWallet}
-            className="px-4 py-2 bg-blue-500 text-white rounded-lg"
+            className="px-4 py-2 bg-black text-white rounded-lg"
           >
             Connect Wallet
           </button>
@@ -741,11 +811,17 @@ const FileUploadAndProcess = () => {
               type="range"
               id="masking-level"
               min="1"
-              max="3"
+              max="4"
               value={maskingLevel}
               onChange={handleMaskingChange}
               className="w-full"
             />
+            <div className="flex justify-between mt-2">
+              <span className="text-sm text-gray-600">Low</span>
+              <span className="text-sm text-gray-600">Medium</span>
+              <span className="text-sm text-gray-600">High</span>
+              <span className="text-sm text-gray-600">Critical</span>
+            </div>
           </div>
 
           <button

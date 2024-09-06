@@ -28,14 +28,28 @@ const Navbar = () => {
         <Link href="/">REDACT</Link>
       </div>
       <div className="mx-9">
-        <Link href="/mask" className="mx-9">
+        <Link
+          href="/dashboard"
+          className="text-black transition duration-300 dark:text-gray-300 hover:text-gray-300 mx-5"
+        >
+          Dashboard
+        </Link>
+        <Link
+          href="/mask"
+          className="text-black transition duration-300 dark:text-gray-300 hover:text-gray-300 mx-5"
+        >
           Mask
         </Link>
-        {/* <span className="mx-9">Demask</span> */}
-        <Link href="/demask" className="mx-9">
+        <Link
+          href="/demask"
+          className="text-black transition duration-300 dark:text-gray-300 hover:text-gray-300 mx-5"
+        >
           Demask
         </Link>
-        <Link href="/validate" className="mx-9">
+        <Link
+          href="/validate"
+          className="text-black transition duration-300 dark:text-gray-300 hover:text-gray-300 mx-5 "
+        >
           Validate
         </Link>
       </div>

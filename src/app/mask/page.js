@@ -4,7 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { useRouter } from 'next/navigation';
-
+import Navbar from '@/components/Navbar';
 const Page = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const router = useRouter();
@@ -28,6 +28,7 @@ const Page = () => {
 
   return (
     <div>
+    <Navbar/>
       {isAuthenticated ? (
         <FileUploadAndProcess /> // Display the component if authenticated
       ) : (

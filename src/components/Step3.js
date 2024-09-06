@@ -4,7 +4,8 @@ import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import { ethers } from "ethers"; // Import ethers
 import { useRouter } from "next/navigation";
-
+// import Navbar from "./Navbar";
+import abi from "../../artifacts/contracts/Redact.sol/Redact.json"
 const contractABI = [
   {
     inputs: [
@@ -307,7 +308,7 @@ const contractABI = [
   },
 ];
 
-const contractAddress = "0xb22b28B0E9B05731f57336dFd06a2b2e5c428aE9"; // Your deployed contract address
+const contractAddress =process.env.NEXT_PUBLIC_S_C_ADDRESS; // Your deployed contract address
 
 const DemaskComponent = () => {
   const router = useRouter();
@@ -342,6 +343,22 @@ const DemaskComponent = () => {
       const [originalLink, certificateLink] = await contract.demask(maskedLink);
       setDemaskResult({ originalLink, certificateLink });
       toast.success("Link demasked successfully!");
+      console.log("hrbvfvfggrf",username)
+      const metricsResponse = await fetch("/api/updateMetrics", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          incrementDemask: 1,
+          username: username.trim()
+        }),
+      });
+
+      if (!metricsResponse.ok) {
+        throw new Error("Error updating mask metrics.");
+      }
+
     } catch (error) {
       console.error("Error demasking link:", error);
       toast.error("Failed to demask link. Please try again.");
@@ -349,64 +366,67 @@ const DemaskComponent = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-100 flex flex-col justify-center items-center">
-      <div className="bg-white rounded-lg shadow-lg p-6 md:w-1/2 w-full max-w-xl">
-        <h2 className="text-3xl font-semibold text-gray-800 text-center mb-6">
-          Demask Your Link
-        </h2>
+    <div>
+      {/* <Navbar /> */}
+      <div className="min-h-screen flex flex-col justify-center items-center">
+        <div className="bg-white rounded-lg shadow-2xl p-6 md:w-1/2 w-full max-w-xl">
+          <h2 className="text-3xl font-semibold text-gray-800 text-center mb-6">
+            Demask Your Link
+          </h2>
 
-        {username && (
-          <div>
-            <p className="text-gray-600 text-center mb-4">
-              Welcome, <span className="font-bold">{username}</span>!
-            </p>
+          {username && (
+            <div>
+              <p className="text-gray-600 text-center mb-4">
+                Welcome, <span className="font-bold">{username}</span>!
+              </p>
 
-            <input
-              type="text"
-              className="w-full px-4 py-2 mb-4 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400"
-              placeholder="Enter Masked Link"
-              value={maskedLink}
-              onChange={(e) => setMaskedLink(e.target.value)}
-            />
+              <input
+                type="text"
+                className="w-full px-4 py-2 mb-4 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400"
+                placeholder="Enter Masked Link"
+                value={maskedLink}
+                onChange={(e) => setMaskedLink(e.target.value)}
+              />
 
-            <button
-              className="w-full bg-blue-500 hover:bg-blue-600 text-white py-2 rounded-md font-semibold transition duration-300 ease-in-out"
-              onClick={connectToContract}
-            >
-              Demask Link
-            </button>
-          </div>
-        )}
-
-        {demaskResult && (
-          <div className="mt-6 p-4 bg-gray-50 rounded-lg border border-gray-200 text-ellipsis overflow-clip whitespace-nowrap">
-            <h3 className="text-lg font-semibold text-gray-700 mb-2">
-              Demasked Result
-            </h3>
-            <p className="text-gray-600 mb-1 text-ellipsis overflow-clip whitespace-nowrap">
-              <span className="font-bold">Original Link: </span>
-              <a
-                href={demaskResult.originalLink}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-blue-500 hover:underline"
+              <button
+                className="w-full bg-blue-500 hover:bg-blue-600 text-white py-2 rounded-md font-semibold transition duration-300 ease-in-out"
+                onClick={connectToContract}
               >
-                {demaskResult.originalLink}
-              </a>
-            </p>
-            <p className="text-gray-600 text-ellipsis overflow-clip whitespace-nowrap">
-              <span className="font-bold">Certificate Link: </span>
-              <a
-                href={demaskResult.certificateLink}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-blue-500 hover:underline"
-              >
-                {demaskResult.certificateLink}
-              </a>
-            </p>
-          </div>
-        )}
+                Demask Link
+              </button>
+            </div>
+          )}
+
+          {demaskResult && (
+            <div className="mt-6 p-4 bg-gray-50 rounded-lg border border-gray-200 text-ellipsis overflow-clip whitespace-nowrap">
+              <h3 className="text-lg font-semibold text-gray-700 mb-2">
+                Demasked Result
+              </h3>
+              <p className="text-gray-600 mb-1 text-ellipsis overflow-clip whitespace-nowrap">
+                <span className="font-bold">Original Link: </span>
+                <a
+                  href={demaskResult.originalLink}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-blue-500 hover:underline"
+                >
+                  {demaskResult.originalLink}
+                </a>
+              </p>
+              <p className="text-gray-600 text-ellipsis overflow-clip whitespace-nowrap">
+                <span className="font-bold">Certificate Link: </span>
+                <a
+                  href={demaskResult.certificateLink}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-blue-500 hover:underline"
+                >
+                  {demaskResult.certificateLink}
+                </a>
+              </p>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
