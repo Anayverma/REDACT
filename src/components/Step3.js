@@ -310,11 +310,13 @@ const contractABI = [
 
 const contractAddress =process.env.NEXT_PUBLIC_S_C_ADDRESS; // Your deployed contract address
 
+
 const DemaskComponent = () => {
   const router = useRouter();
   const [username, setUsername] = useState(null);
   const [maskedLink, setMaskedLink] = useState("");
   const [demaskResult, setDemaskResult] = useState(null);
+  const [loading, setLoading] = useState(false); // Loading state
 
   useEffect(() => {
     const storedUsername = localStorage.getItem("username");
@@ -331,19 +333,16 @@ const DemaskComponent = () => {
       toast.error("Please enter a masked link.");
       return;
     }
+    setLoading(true); // Set loading to true when starting the process
     try {
       const provider = new ethers.providers.Web3Provider(window.ethereum);
       await provider.send("eth_requestAccounts", []);
       const signer = provider.getSigner();
-      const contract = new ethers.Contract(
-        contractAddress,
-        contractABI,
-        signer
-      );
+      const contract = new ethers.Contract(contractAddress, contractABI, signer);
       const [originalLink, certificateLink] = await contract.demask(maskedLink);
       setDemaskResult({ originalLink, certificateLink });
       toast.success("Link demasked successfully!");
-      console.log("hrbvfvfggrf",username)
+
       const metricsResponse = await fetch("/api/updateMetrics", {
         method: "POST",
         headers: {
@@ -351,7 +350,7 @@ const DemaskComponent = () => {
         },
         body: JSON.stringify({
           incrementDemask: 1,
-          username: username.trim()
+          username: username.trim(),
         }),
       });
 
@@ -362,13 +361,20 @@ const DemaskComponent = () => {
     } catch (error) {
       console.error("Error demasking link:", error);
       toast.error("Failed to demask link. Please try again.");
+    } finally {
+      setLoading(false); // Set loading to false when done
     }
   };
 
   return (
     <div>
-      {/* <Navbar /> */}
-      <div className="min-h-screen flex flex-col justify-center items-center">
+      {loading && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center">
+          <div className="loader ease-linear rounded-full border-8 border-t-8 border-gray-200 h-12 w-12"></div>
+         <span className=" text-3xl text-white">Loading ...</span>
+        </div>
+      )}
+      <div className={`min-h-screen flex flex-col justify-center items-center ${loading ? "opacity-50" : ""}`}>
         <div className="bg-white rounded-lg shadow-2xl p-6 md:w-1/2 w-full max-w-xl">
           <h2 className="text-3xl font-semibold text-gray-800 text-center mb-6">
             Demask Your Link
@@ -391,8 +397,9 @@ const DemaskComponent = () => {
               <button
                 className="w-full bg-blue-500 hover:bg-blue-600 text-white py-2 rounded-md font-semibold transition duration-300 ease-in-out"
                 onClick={connectToContract}
+                disabled={loading} // Disable button while loading
               >
-                Demask Link
+                {loading ? "Demasking..." : "Demask Link"}
               </button>
             </div>
           )}
